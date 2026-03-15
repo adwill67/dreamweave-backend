@@ -9,9 +9,9 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  const { currency = 'gbp' } = req.body || {};
+  const { currency = 'gbp', successUrl, cancelUrl } = req.body || {};
   const prices = { gbp: 499, usd: 499, eur: 499 };
-  const appUrl = process.env.APP_URL || 'https://dreamweaveapp.netlify.app';
+  const appUrl = successUrl || process.env.APP_URL || 'https://dreamweaveapp.netlify.app';
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
         quantity: 1,
       }],
       success_url: `${appUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:  appUrl,
+      cancel_url:  cancelUrl || appUrl,
     });
 
     return res.status(200).json({ url: session.url });
