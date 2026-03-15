@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const { currency = 'gbp' } = req.body || {};
   const prices = { gbp: 499, usd: 499, eur: 499 };
-  const appUrl = process.env.APP_URL || 'https://dreamweave-backend.vercel.app';
+  const appUrl = process.env.APP_URL || 'https://dreamweaveapp.netlify.app';
 
   try {
     const session = await stripe.checkout.sessions.create({
