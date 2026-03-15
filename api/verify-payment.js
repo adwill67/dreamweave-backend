@@ -1,49 +1,40 @@
 // api/verify-payment.js
-// Called after Stripe redirects to /success — verifies subscription and issues token
-
-import Stripe from 'stripe';
-import crypto from 'crypto';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const Stripe = require('stripe');
+const crypto = require('crypto');
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST')   return res.status(405).end();
+  if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
   const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'Missing session ID' });
 
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['subscription'],
-    });
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-    // Check subscription is active
-    const sub = session.subscription;
-    if (!sub || !['active','trialing'].includes(sub.status)) {
-      return res.status(402).json({ error: 'Subscription not active' });
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status !== 'paid') {
+      return res.status(402).json({ error: 'Payment not completed' });
     }
 
-    // Generate token from subscription ID — same sub always gets same token
-    const token = 'dw_sub_' + crypto
+    // Generate a permanent token from the session ID
+    const token = 'dw_paid_' + crypto
       .createHmac('sha256', process.env.TOKEN_SALT || 'dreamweave2025')
-      .update(sub.id)
+      .update(session.id)
       .digest('hex')
       .slice(0, 32);
 
     return res.status(200).json({
       token,
-      subscriptionId: sub.id,
-      status:         sub.status,
-      renewsAt:       new Date(sub.current_period_end * 1000).toISOString(),
-      email:          session.customer_details?.email || '',
+      email: session.customer_details?.email || '',
     });
 
   } catch (err) {
-    console.error('Verify error:', err);
+    console.error('Verify error:', err.message);
     return res.status(500).json({ error: err.message });
   }
-}
+};
