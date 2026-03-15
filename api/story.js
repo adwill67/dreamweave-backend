@@ -1,7 +1,7 @@
 // api/story.js — Vercel serverless function
 // Proxies Claude API calls so your API key stays secret
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS — allow your domain only in production
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
